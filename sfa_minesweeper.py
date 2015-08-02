@@ -21,13 +21,13 @@ class MineSweeperSim:
     'delta': [(0, -1), (0, 0), (0, 1)]
   }
 
+  move_counter = 0
 
   def print_current_field(self):
     # for readabilities sake I'll define the following variables so that tuple indexes are more
     # easily understood
     x = 0
     y = 1
-    z = 2
 
     # we want to find the maximum offsets in any direction of a mine from the sweeper and use those
     # values to define our x and y boundaries. The result will be a translation on our existing
@@ -57,7 +57,11 @@ class MineSweeperSim:
     for mine, mine_z in self.mines_z_map.items():
       current_field[mine[y] + mine_y_offset][mine[x] + mine_x_offset] = mine_z
 
-    print current_field
+    for row in current_field:
+      print_row = []
+      for col in row:
+        print_row.append(str(col))
+      print '\t'.join(print_row)
 
 
   def parse_cuboid(self, rows):
@@ -86,13 +90,16 @@ class MineSweeperSim:
     # the center point as the starting location of the mine sweeper.
     self.sweeper_location.append((int(x_max/2), int(y_max/2), 0))
 
-
   def execute_move(self, move):
     # for readabilities sake I'll define the following variables so that tuple indexes are more
     # easily understood
     x = 0
     y = 1
     z = 2
+
+    print 'Step {0}'.format(self.move_counter + 1)
+    self.print_current_field()
+    print move.strip()
 
     # parse the step and see if it is a valid movement for firing pattern
     steps = move.strip().split(' ')
@@ -109,6 +116,13 @@ class MineSweeperSim:
           torp_loc = (cur_loc[x] + off_set[x], cur_loc[y] + off_set[y])
           if torp_loc in self.mines_z_map.keys():
             del self.mines_z_map[torp_loc]
+    self.increment_move()
+    self.print_current_field()
+
+  def increment_move(self):
+    self.move_counter += 1
+    for mine, z in self.mines_z_map.items():
+      self.mines_z_map[mine] = z + 1
 
 
 if __name__ == '__main__':
@@ -118,8 +132,5 @@ if __name__ == '__main__':
   sim = MineSweeperSim()
   sim.parse_cuboid(cuboid_if.readlines())
 
-  print sim.mines_z_map
   for move in moves_if.readlines():
-    sim.print_current_field()
     sim.execute_move(move)
-    print sim.mines_z_map

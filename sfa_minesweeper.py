@@ -6,6 +6,7 @@ class MineSweeperSim:
 
   mines_z_map = {}
   sweeper_location = []
+  mine_display_offsets = [0, 0]
 
   moves = {
     'north': (0, -1),
@@ -40,9 +41,11 @@ class MineSweeperSim:
     max_y_diff = 0
     for mine in self.mines_z_map.keys():
       x_diff = abs(self.sweeper_location[-1][x] - mine[x])
-      max_x_diff = x_diff if x_diff > max_x_diff else max_x_diff
+      if x_diff > max_x_diff:
+        max_x_diff = x_diff
       y_diff = abs(self.sweeper_location[-1][y] - mine[y])
-      max_y_diff = y_diff if y_diff > max_y_diff else max_y_diff
+      if y_diff > max_y_diff:
+        max_y_diff = y_diff
 
     # use our maxes to determin the field bounds and populate the current field
     current_field = []
@@ -52,28 +55,30 @@ class MineSweeperSim:
         current_row.append('.')
       current_field.append(current_row)
 
-    # We can use the difference between the center of our translated coordinate system and the
-    # current ships location in our main coordinate system to calculate the transformation on our
-    # mines.
-    mine_x_offset = self.sweeper_location[-1][x] - int(((max_x_diff * 2) + 1)/2)
-    mine_y_offset = self.sweeper_location[-1][y] - int(((max_y_diff * 2) + 1)/2)
-
-    # This is ugly, but there's a corner case where the offsets can get our of range
-    if mine_x_offset > max_x_diff:
-      mine_x_offset *= -1
-    if mine_y_offset > max_y_diff:
-      mine_y_offset *= -1
-
-    # loop over our mines and insert them into the current field
+    # loop over our mines and insert them into the current field using our display offset
     for mine, mine_z in self.mines_z_map.items():
-      current_field[mine[y] + mine_y_offset][mine[x] + mine_x_offset] = mine_z
+      offset_mine_x = mine[x] + self.mine_display_offsets[x]
+      offset_mine_y = mine[y] + self.mine_display_offsets[y]
+      # special case for the last mine in a single row or column
+      if max_x_diff == 0:
+        offset_mine_x = 0
+      if max_y_diff == 0:
+        offset_mine_y = 0
+      current_field[offset_mine_y][offset_mine_x] = self.mine_ord(mine_z)
 
     for row in current_field:
       print_row = []
       for col in row:
         print_row.append(str(col))
-      print '\t'.join(print_row)
+      print ' '.join(print_row)
 
+  def mine_ord(self, z):
+    if z < -26 and z > -53:
+      return chr((z * -1) + 38)
+    elif z < 0 and z > -27:
+      return chr((z * -1) + 96)
+    else:
+      return '*'
 
   def parse_cuboid(self, rows):
 
@@ -123,6 +128,16 @@ class MineSweeperSim:
         move = self.moves[step]
         self.sweeper_location.append((cur_loc[x] + move[x], cur_loc[y] + move[y], cur_loc[z]))
 
+        # display offset updates, make sure we know how to display our mines correctly
+        if step == 'north':
+          self.mine_display_offsets[y] += 2
+        if step == 'west':
+          self.mine_display_offsets[x] += 2
+        if step == 'south':
+          self.mine_display_offsets[y] -= 2
+        if step == 'east':
+          self.mine_display_offsets[x] -= 2
+
         # points accounting
         if self.move_penalty_counter:
           self.points -= 2
@@ -150,11 +165,12 @@ class MineSweeperSim:
   def run_sim(self, moves):
     """ Handles running the sim from the input and providing output
     """
-
+    fail = False
     for move in moves:
       # check if we've all mines are gone
       if len(self.mines_z_map.keys()) == 0:
         self.points = 1
+        break
 
       print 'Step {0}'.format(self.move_counter + 1)
       print
@@ -168,14 +184,17 @@ class MineSweeperSim:
       print
       if self.mine_passed:
         # if we pass a mine we fail with 0 points
+        fail = True
         print 'fail (0)'
         break
 
     # if we've done all the moves form the script and there are still mines we fail with - points
-    if len(self.mines_z_map.keys()) != 0:
+    if len(self.mines_z_map.keys()) != 0 and not fail:
+      fail = True
       print 'fail (0)'
 
-    print 'pass ({0})'.format(self.points)
+    if not fail:
+      print 'pass ({0})'.format(self.points)
 
 
 if __name__ == '__main__':
